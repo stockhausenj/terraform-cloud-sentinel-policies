@@ -1,0 +1,22 @@
+import "tfplan"
+
+validate_attribute_in_list = func() {
+    count = 0
+    aws_vpc_resources = tfplan.resources.aws_vpc
+     #Loop through the resource instances
+    for aws_vpc_resources as _, r {
+      tags = r[count].applied.tags
+      if tags is null {
+        return false
+      } else if "sentinel" not in keys(tags) {
+        return false
+      }
+      count = count + 1
+    }
+    return true
+}
+
+# VPC has sentinel tag
+main = rule {
+    validate_attribute_in_list()
+}
