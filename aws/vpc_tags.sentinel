@@ -1,22 +1,26 @@
-import "tfplan"
+import "tfplan/v2" as tfplan
 
-validate_attribute_in_list = func() {
-    count = 0
-    aws_vpc_resources = tfplan.resources.aws_vpc
-     #Loop through the resource instances
-    for aws_vpc_resources as _, r {
-      tags = r[count].applied.tags
-      if tags is null {
-        return false
-      } else if "sentinel" not in keys(tags) {
-        return false
-      }
-      count = count + 1
+validate = func() {
+  allowed_actions = [["create"], ["update"], ["delete", "create"]]
+  aws_vpc_resources = filter tfplan.resource_changes as _, rc {
+    rc.mode is "managed" and
+      rc.type is "aws_vpc" and
+      rc.change.actions in allowed_actions
+  }
+  valid = true
+  for aws_vpc_resources as _, r {
+    tags = r.change.after.tags
+    if "sentinel" in keys(tags) {
+      print("VPC", r.address, "has the required tag")
+    } else {
+      print("VPC", r.address, "is missing required tags")
+      valid = false
     }
-    return true
+  }
+  return valid
 }
 
 # VPC has sentinel tag
 main = rule {
-    validate_attribute_in_list()
+    validate()
 }
